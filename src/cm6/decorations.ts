@@ -27,8 +27,19 @@ export class StatefulDecorationSet {
         const lineNrs = getLinesToCheckForRender(state ? state : view.state, newDoc);
         if (lineNrs.length > 0) {
             const decos = await this.getDecorationsForLines({ lineNrs, view, newDoc, plugin });
+            // Race guard: while we were awaiting, the editing mode may have flipped to
+            // Live Preview / Reading mode. Obsidian renders embeds natively there, so
+            // applying our widgets now would produce duplicates. (Obsidian 1.13+ shares
+            // one CM6 instance across modes, so this window really exists.)
+            if (ObsidianHelpers.livePreviewActive(plugin.app, view)) return;
             if (decos || this.editor.state.field(statefulDecorations.field).size) {
-                this.editor.dispatch({ effects: statefulDecorations.update.of(decos || Decoration.none) });
+                try {
+                    this.editor.dispatch({ effects: statefulDecorations.update.of(decos || Decoration.none) });
+                } catch (e) {
+                    // The view can be destroyed while the async decoration build was in
+                    // flight (e.g. leaf closed / mode switched); dispatching to a dead
+                    // view must not surface as an error.
+                }
             }
         }
     }
