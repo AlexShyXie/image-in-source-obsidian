@@ -1,7 +1,7 @@
 # Ozan's Image in Editor Plugin
 
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/ozntel/oz-image-in-editor-obsidian?style=for-the-badge)
-![GitHub all releases](https://img.shields.io/github/downloads/ozntel/oz-image-in-editor-obsidian/total?style=for-the-badge)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/AlexShyXie/image-in-source-obsidian?style=for-the-badge)
+![GitHub all releases](https://img.shields.io/github/downloads/AlexShyXie/image-in-source-obsidian/total?style=for-the-badge)
 
 **Note**: As of `Version 2.1.3`, support for legacy editor has been removed. If you still want to use this plugin with the legacy editor, please manually install `Version 2.1.2`, which is the latest version compatible with the Legacy editor.
 
