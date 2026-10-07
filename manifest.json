@@ -1,11 +1,10 @@
 {
-    "id": "oz-image-plugin",
-    "name": "Image in Editor",
-    "version": "2.2.6",
+    "id": "image-in-source-obsidian",
+    "name": "Image in source editor",
+    "version": "2.2.8",
     "minAppVersion": "0.15.0",
-    "description": "View Images, Transclusions, iFrames and PDF Files within the Editor without a necessity to switch to Preview.",
-    "author": "Ozan Tellioglu",
-    "authorUrl": "https://ozan.pl/aboutme/",
-    "fundingUrl": "https://ko-fi.com/ozante",
+    "description": "View Images, Transclusions, iFrames and PDF Files within the source editor without a necessity to switch to Preview.",
+    "author": "AlexShyXie",
+    "authorUrl": "https://github.com/AlexShyXie",
     "isDesktopOnly": false
 }

@@ -5,6 +5,27 @@ import * as ObsidianHelper from 'src/util/obsidianHelper';
 
 export const transclusionTypes = ['file-transclusion', 'header-transclusion', 'blockid-transclusion'];
 
+// --> Helper for Markdown link destinations.
+// Mirrors the semantics of obsidian-dev-utils parse-link (the shared parser behind
+// obsidian-better-markdown-links, whose "Should use angle brackets" setting generates
+// destinations like ![](<path with spaces.jpg>) whenever [[Wikilinks]] is disabled):
+//   - An angle-bracket destination (<...>) carries the vault path as-is. It must NOT be
+//     percent-decoded (that form exists precisely to avoid encoding spaces etc.).
+//   - A bare destination is percent-encoded (e.g. path%20with%20spaces.jpg) and must be
+//     decoded. Malformed percent sequences fall back to the raw text instead of throwing.
+const extractMdDestination = (raw: string): string => {
+    const hasAngleBrackets = raw.startsWith('<') && raw.endsWith('>');
+    const path = hasAngleBrackets ? raw.slice(1, -1) : raw;
+    if (hasAngleBrackets) {
+        return path;
+    }
+    try {
+        return decodeURIComponent(path);
+    } catch (e) {
+        return path;
+    }
+};
+
 export type TransclusionType = 'file-transclusion' | 'header-transclusion' | 'blockid-transclusion';
 export type ImageType = 'vault-image' | 'external-image' | 'excalidraw';
 export type PdfType = 'pdf-link' | 'pdf-file';
@@ -76,15 +97,20 @@ export const detectLink = (params: { lineText: string; sourceFile: TFile; plugin
         }
     }
 
-    // 2. Pdf Md ![ ]( ) format
+    // 2. Pdf Md ![ ]( ) format — also supports the angle-bracket destination form ![ ](<...>)
     const pdfMdRegex = /!\[(^$|.*)\]\(.*(pdf)(.*)?\)/;
     const pdfMdMatch = lineText.match(pdfMdRegex);
 
     if (pdfMdMatch) {
-        const pdfMdFileNameRegex = /\(.*.pdf/;
-        const pdfMdFileNameMatch = pdfMdMatch[0].match(pdfMdFileNameRegex);
-        if (pdfMdFileNameMatch) {
-            const pdfMdFileNameMatchClear = pdfMdFileNameMatch[0].replace('(', '');
+        // Angle-bracket destinations wrap the full destination (including any #page=... subpath)
+        // up to the closing '>'; bare destinations end at the extension (legacy behavior).
+        const bareDestinationMatch = pdfMdMatch[0].match(/\(.*.pdf/);
+        const destinationMatch =
+            bareDestinationMatch && bareDestinationMatch[0].startsWith('(<') ? pdfMdMatch[0].match(/\(<?[^)\n]*>/) : bareDestinationMatch;
+        if (destinationMatch) {
+            // Note: for external (http) PDFs the raw destination is kept as the iframe URL
+            // (unchanged legacy behavior); extractMdDestination only applies to vault paths.
+            const pdfMdFileNameMatchClear = destinationMatch[0].replace('(', '');
             const httpLinkRegex = /(http[s]?:\/\/)([^\/\s]+\/)(.*)/;
             const pdfPageNumberRegex = new RegExp('#page=[0-9]+');
             const pdfPageNumberMatch = pdfMdMatch[0].match(pdfPageNumberRegex);
@@ -98,7 +124,8 @@ export const detectLink = (params: { lineText: string; sourceFile: TFile; plugin
                     blockRef: pdfPageNumberMatch ? pdfPageNumberMatch[0] : '',
                 };
             } else {
-                const file = plugin.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(pdfMdFileNameMatchClear), sourceFile.path);
+                const linkpath = extractMdDestination(pdfMdFileNameMatchClear).replace(/#.*$/, '');
+                const file = plugin.app.metadataCache.getFirstLinkpathDest(linkpath, sourceFile.path);
 
                 if (file) {
                     return {
@@ -135,16 +162,16 @@ export const detectLink = (params: { lineText: string; sourceFile: TFile; plugin
         }
     }
 
-    // 2. ![ ]( ) format
-    const internalImageMdRegex = /!\[(^$|.*?)\]\(.*?(jpe?g|png|gif|svg|bmp|webp)\)/;
+    // 2. ![ ]( ) format — also supports the angle-bracket destination form ![ ](<...>)
+    const internalImageMdRegex = /!\[(^$|.*?)\]\(<?(.*?(jpe?g|png|gif|svg|bmp|webp))>?\)/;
     const internalImageMdMatch = lineText.match(internalImageMdRegex);
 
     if (internalImageMdMatch) {
-        const fileNameRegex = /\(.*(jpe?g|png|gif|svg|bmp|webp)/;
+        const fileNameRegex = /\(<?.*(jpe?g|png|gif|svg|bmp|webp)>?/;
         const fileMatch = internalImageMdMatch[0].match(fileNameRegex);
         if (fileMatch) {
-            const fileMatchClear = fileMatch[0].replace('(', '');
-            const file = plugin.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(fileMatchClear), sourceFile.path);
+            const fileMatchClear = extractMdDestination(fileMatch[0].replace('(', ''));
+            const file = plugin.app.metadataCache.getFirstLinkpathDest(fileMatchClear, sourceFile.path);
             if (file) {
                 const altRegex = /\[(^$|.*)(?=\])/;
                 const altMatch = internalImageMdMatch[0].match(altRegex);
@@ -198,7 +225,7 @@ export const detectLink = (params: { lineText: string; sourceFile: TFile; plugin
         let fileNameMatch = lineText.match(mdTransclusionMatch ? mdFileNameRegex : wikiFileNameRegex);
         if (fileNameMatch) {
             let fileNameMatchClear = fileNameMatch[0].replace('](', '').replace('[[', '');
-            let file = plugin.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(fileNameMatchClear), sourceFile.path);
+            let file = plugin.app.metadataCache.getFirstLinkpathDest(extractMdDestination(fileNameMatchClear), sourceFile.path);
             if (file && ExcalidrawHandler.excalidrawPluginIsLoaded(plugin.app) && ExcalidrawHandler.isAnExcalidrawFile(file)) {
                 const mdAltRegex = /\[(^$|.*)(?=\])/;
                 const wikiAltRegex = /\|.*(?=]])/;

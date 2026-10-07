@@ -1,7 +1,7 @@
 {
-    "name": "oz-image-plugin",
-    "version": "2.2.6",
-    "description": "View Images, Transclusions, iFrames and PDF Files within the Editor without a necessity to switch to Preview.",
+    "name": "image-in-source-obsidian",
+    "version": "2.2.8",
+    "description": "View Images, Transclusions, iFrames and PDF Files within the source editor without a necessity to switch to Preview.",
     "main": "main.js",
     "scripts": {
         "dev": "rollup --config rollup.config.js -w",
